@@ -141,11 +141,11 @@ class ServiceTemplate < ApplicationRecord
   end
 
   def self.class_from_prov_type(prov_type)
+    raise ArgumentError, "Invalid prov_type '#{prov_type}'" unless all_catalog_item_types.key?(prov_type)
+
     # This is the full list of acceptable values.  This allows us to check for
     # class name validity before calling constantize.
     allowed_class_names = descendants.collect(&:name)
-
-    raise ArgumentError, "Invalid prov_type '#{prov_type}'" unless all_catalog_item_types.key?(prov_type)
 
     # If we are given a "generic" provision type then assume that the prov_type
     # maps to a valid class otherwise it is invalid
@@ -155,13 +155,11 @@ class ServiceTemplate < ApplicationRecord
     if prov_type.starts_with?("generic_")
       generic_type = prov_type.split('generic_').last
       class_name   = "ServiceTemplate#{generic_type.camelize}"
-      raise ArgumentError, "Invalid prov_type '#{prov_type}'" unless allowed_class_names.include?(class_name)
+      class_name.constantize(:allowlist => allowed_class_names)
     else
       class_name = "ServiceTemplate#{prov_type.camelize}"
-      class_name = "ServiceTemplate" unless allowed_class_names.include?(class_name)
+      class_name.safe_constantize(:allowlist => allowed_class_names) || ServiceTemplate
     end
-
-    class_name.constantize
   end
 
   def update_catalog_item(options, auth_user = nil)
